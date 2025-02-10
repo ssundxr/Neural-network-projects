@@ -1,0 +1,152 @@
+import os
+import numpy as np
+import cv2
+import tensorflow as tf
+import matplotlib.pyplot as plt
+import ipywidgets as widgets
+from IPython.display import display
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow import keras
+from sklearn.model_selection import train_test_split
+from PIL import Image
+from skopt import gp_minimize
+from skopt.space import Real, Integer
+from skopt.utils import use_named_args
+
+# Load Dataset
+path = r"C:\Users\sdshy\.cache\kagglehub\datasets\sureshrasappan\lungcancer105klc105k\versions\1\lung_768x768\lung_768x768"
+
+print("Dataset Path:", path)
+
+train_datagen = ImageDataGenerator(rescale=1./255, validation_split=0.2)
+train_generator = train_datagen.flow_from_directory(
+    path, target_size=(128, 128), color_mode='grayscale',
+    batch_size=32, class_mode='binary', subset='training'
+)
+val_generator = train_datagen.flow_from_directory(
+    path, target_size=(128, 128), color_mode='grayscale',
+    batch_size=32, class_mode='binary', subset='validation'
+)
+
+print("Train Generator Classes:", train_generator.class_indices)
+print("Validation Generator Classes:", val_generator.class_indices)
+
+train_images, train_labels = next(train_generator)
+val_images, val_labels = next(val_generator)
+
+print("Train Images Shape:", train_images.shape)
+print("Train Labels Shape:", train_labels.shape)
+print("Validation Images Shape:", val_images.shape)
+print("Validation Labels Shape:", val_labels.shape)
+
+# CNN Model
+model = Sequential([
+    Conv2D(32, (3,3), activation='relu', input_shape=(128, 128, 1)),
+    MaxPooling2D(2,2),
+    Conv2D(64, (3,3), activation='relu'),
+    MaxPooling2D(2,2),
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dropout(0.5),
+    Dense(1, activation='sigmoid')
+])
+
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+model.summary()
+
+history = model.fit(train_images, train_labels, validation_data=(val_images, val_labels), epochs=10, batch_size=32)
+model.save("lung_cancer_cnn_model.keras")
+
+# Hyperparameter Optimization
+space = [
+    Real(1e-5, 1e-2, name='learning_rate'),
+    Integer(16, 128, name='batch_size'),
+    Integer(16, 128, name='filters'),
+    Real(0.0, 0.5, name='dropout_rate')
+]
+
+@use_named_args(space)
+def objective(**params):
+    model = keras.Sequential([
+        keras.layers.Input(shape=(128, 128, 1)),
+        keras.layers.Conv2D(params['filters'], (3, 3), activation='relu'),
+        keras.layers.MaxPooling2D(2, 2),
+        keras.layers.Dropout(params['dropout_rate']),
+        keras.layers.Flatten(),
+        keras.layers.Dense(128, activation='relu'),
+        keras.layers.Dense(1, activation='sigmoid')
+    ])
+    
+    optimizer = keras.optimizers.Adam(learning_rate=params['learning_rate'])
+    model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+    
+    history = model.fit(train_images, train_labels, validation_data=(val_images, val_labels),
+                        epochs=5, batch_size=params['batch_size'], verbose=0)
+    
+    return -history.history['val_accuracy'][-1]
+
+res = gp_minimize(objective, space, n_calls=10, random_state=42)
+print("Best Hyperparameters:", res.x)
+
+# Load Trained Model
+model = keras.models.load_model("lung_cancer_cnn_model.keras")
+
+# File Upload Widget
+uploader = widgets.FileUpload(accept='image/*', multiple=False)
+display(uploader)
+
+# Debugging
+print("File Upload Widget Initialized.")
+
+# Upload & Predict Function
+def on_upload(change):
+    print("Upload event detected.")
+    
+    if uploader.value:
+        print("Uploader value found!")
+        
+        # Extract uploaded file (tuple structure)
+        uploaded_file = uploader.value[0]  # First element of the tuple
+        content = uploaded_file['content']  # Access content directly
+        
+        image_path = "uploaded_image.jpg"
+        
+        # Save the uploaded image
+        with open(image_path, "wb") as f:
+            f.write(content)
+            
+        # Load, preprocess, and display the image
+        img = Image.open(image_path).convert("L").resize((128, 128))
+        plt.imshow(img, cmap="gray")
+        plt.axis("off")
+        plt.show()
+
+        # Convert image to NumPy array for prediction
+        img_array = np.expand_dims(np.array(img) / 255.0, axis=(0, -1))
+        
+        # Predict using the trained model
+        prediction = model.predict(img_array)[0][0]
+        label = "Cancerous" if prediction > 0.5 else "Non-Cancerous"
+        print(f"\nPrediction: {label} (Confidence: {prediction:.4f})")
+    else:
+        print("No file uploaded!")
+
+# Observe file upload event
+uploader.observe(on_upload, names="value")
+
+# Alternative Button-Based Upload (if observe doesn't work)
+button = widgets.Button(description="Predict Image")
+output = widgets.Output()
+
+def on_button_clicked(b):
+    with output:
+        output.clear_output()
+        if uploader.value:
+            on_upload(None)
+        else:
+            print("Please upload an image first!")
+
+button.on_click(on_button_clicked)
+display(button, output)
