@@ -12,12 +12,19 @@ Optimization to achieve the best performance. The project is implemented in Pyth
 Table of Contents
 Overview
 1.Dataset
+
 2.Methodology
+
 3.Installation
+
 4.Usage
+
 5.Results
+
 6.Contributing
+
 7.License
+
 8.Acknowledgements
 
 Overview
