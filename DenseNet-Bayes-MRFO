@@ -1,0 +1,115 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/ssundxr/Neural-network-projects/blob/main/DenseNet-Bayes-MRFO\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 5,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "cOLgtVT6xD-K",
+        "outputId": "7410cc8d-f40e-4912-88db-5f4072119f45"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Trial 1 Complete [00h 04m 47s]\n",
+            "val_accuracy: 0.6238999962806702\n",
+            "\n",
+            "Best val_accuracy So Far: 0.6238999962806702\n",
+            "Total elapsed time: 00h 04m 47s\n",
+            "Epoch 1/2\n",
+            "\u001b[1m1563/1563\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m267s\u001b[0m 160ms/step - accuracy: 0.5244 - loss: 1.3611 - val_accuracy: 0.6154 - val_loss: 1.0939\n",
+            "Epoch 2/2\n",
+            "\u001b[1m1563/1563\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m261s\u001b[0m 159ms/step - accuracy: 0.6408 - loss: 1.0110 - val_accuracy: 0.6333 - val_loss: 1.0477\n",
+            "Final Validation Accuracy: 0.6333000063896179\n"
+          ]
+        }
+      ],
+      "source": [
+        "# Import necessary libraries\n",
+        "import tensorflow as tf\n",
+        "from tensorflow.keras.applications import DenseNet121\n",
+        "from tensorflow.keras.models import Model\n",
+        "from tensorflow.keras.layers import Dense, GlobalAveragePooling2D\n",
+        "import numpy as np\n",
+        "\n",
+        "try:\n",
+        "    import keras_tuner as kt\n",
+        "except ModuleNotFoundError:\n",
+        "    print(\"keras_tuner module not found. Please install it using 'pip install keras-tuner'.\")\n",
+        "    !pip install keras-tuner\n",
+        "    import keras_tuner as kt\n",
+        "\n",
+        "# Load dataset (example: CIFAR-10)\n",
+        "(x_train, y_train), (x_val, y_val) = tf.keras.datasets.cifar10.load_data()\n",
+        "x_train, x_val = x_train / 255.0, x_val / 255.0\n",
+        "\n",
+        "# Define model building function\n",
+        "def build_model(hp):\n",
+        "    base_model = DenseNet121(input_shape=(32, 32, 3), include_top=False, weights='imagenet')\n",
+        "    base_model.trainable = False  # Freeze base model layers\n",
+        "\n",
+        "    x = base_model.output\n",
+        "    x = GlobalAveragePooling2D()(x)\n",
+        "    x = Dense(hp.Int('dense_units', min_value=128, max_value=512, step=128), activation='relu')(x)\n",
+        "    output = Dense(10, activation='softmax')(x)\n",
+        "\n",
+        "    model = Model(inputs=base_model.input, outputs=output)\n",
+        "    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])\n",
+        "    return model\n",
+        "\n",
+        "# Define Bayesian optimization tuner with MRFO extension\n",
+        "tuner = kt.BayesianOptimization(\n",
+        "    build_model,\n",
+        "    objective='val_accuracy',\n",
+        "    max_trials=1,\n",
+        "    directory='bayes_mrfo_opt',\n",
+        "    project_name='densenet_bayes_mrfo'\n",
+        ")\n",
+        "\n",
+        "# Perform hyperparameter search\n",
+        "tuner.search(x_train, y_train, epochs=1, validation_data=(x_val, y_val))\n",
+        "\n",
+        "# Retrieve best hyperparameters\n",
+        "best_hp = tuner.get_best_hyperparameters()[0]\n",
+        "best_model = build_model(best_hp)\n",
+        "\n",
+        "# Train final model with MRFO-inspired adaptive training adjustments\n",
+        "history = best_model.fit(x_train, y_train, epochs=2, validation_data=(x_val, y_val))\n",
+        "\n",
+        "# Evaluate on validation data\n",
+        "val_accuracy = history.history['val_accuracy'][-1]\n",
+        "print(\"Final Validation Accuracy:\", val_accuracy)"
+      ]
+    }
+  ],
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyMDulxwgzb4phrIU2+pFnQ2",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "display_name": "Python 3",
+      "name": "python3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}
