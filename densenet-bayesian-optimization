@@ -1,0 +1,704 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyPXp7u48AFnIR6Vi2sWa5S0",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/ssundxr/Neural-network-projects/blob/main/densenet-bayesian-optimization\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 2,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "5pNuif9fZuR0",
+        "outputId": "c448bc02-b28c-47d6-8d33-e2d6564b59c7"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Collecting keras-tuner\n",
+            "  Downloading keras_tuner-1.4.7-py3-none-any.whl.metadata (5.4 kB)\n",
+            "Requirement already satisfied: keras in /usr/local/lib/python3.11/dist-packages (from keras-tuner) (3.8.0)\n",
+            "Requirement already satisfied: packaging in /usr/local/lib/python3.11/dist-packages (from keras-tuner) (24.2)\n",
+            "Requirement already satisfied: requests in /usr/local/lib/python3.11/dist-packages (from keras-tuner) (2.32.3)\n",
+            "Collecting kt-legacy (from keras-tuner)\n",
+            "  Downloading kt_legacy-1.0.5-py3-none-any.whl.metadata (221 bytes)\n",
+            "Requirement already satisfied: absl-py in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (1.4.0)\n",
+            "Requirement already satisfied: numpy in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (1.26.4)\n",
+            "Requirement already satisfied: rich in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (13.9.4)\n",
+            "Requirement already satisfied: namex in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (0.0.8)\n",
+            "Requirement already satisfied: h5py in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (3.12.1)\n",
+            "Requirement already satisfied: optree in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (0.14.0)\n",
+            "Requirement already satisfied: ml-dtypes in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (0.4.1)\n",
+            "Requirement already satisfied: charset-normalizer<4,>=2 in /usr/local/lib/python3.11/dist-packages (from requests->keras-tuner) (3.4.1)\n",
+            "Requirement already satisfied: idna<4,>=2.5 in /usr/local/lib/python3.11/dist-packages (from requests->keras-tuner) (3.10)\n",
+            "Requirement already satisfied: urllib3<3,>=1.21.1 in /usr/local/lib/python3.11/dist-packages (from requests->keras-tuner) (2.3.0)\n",
+            "Requirement already satisfied: certifi>=2017.4.17 in /usr/local/lib/python3.11/dist-packages (from requests->keras-tuner) (2025.1.31)\n",
+            "Requirement already satisfied: typing-extensions>=4.5.0 in /usr/local/lib/python3.11/dist-packages (from optree->keras->keras-tuner) (4.12.2)\n",
+            "Requirement already satisfied: markdown-it-py>=2.2.0 in /usr/local/lib/python3.11/dist-packages (from rich->keras->keras-tuner) (3.0.0)\n",
+            "Requirement already satisfied: pygments<3.0.0,>=2.13.0 in /usr/local/lib/python3.11/dist-packages (from rich->keras->keras-tuner) (2.18.0)\n",
+            "Requirement already satisfied: mdurl~=0.1 in /usr/local/lib/python3.11/dist-packages (from markdown-it-py>=2.2.0->rich->keras->keras-tuner) (0.1.2)\n",
+            "Downloading keras_tuner-1.4.7-py3-none-any.whl (129 kB)\n",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m129.1/129.1 kB\u001b[0m \u001b[31m9.2 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\n",
+            "\u001b[?25hDownloading kt_legacy-1.0.5-py3-none-any.whl (9.6 kB)\n",
+            "Installing collected packages: kt-legacy, keras-tuner\n",
+            "Successfully installed keras-tuner-1.4.7 kt-legacy-1.0.5\n"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "<ipython-input-2-78eedf26ead0>:2: DeprecationWarning: `import kerastuner` is deprecated, please use `import keras_tuner`.\n",
+            "  from kerastuner.tuners import BayesianOptimization\n"
+          ]
+        }
+      ],
+      "source": [
+        "!pip install keras-tuner --upgrade\n",
+        "from kerastuner.tuners import BayesianOptimization\n",
+        "import tensorflow as tf\n",
+        "from tensorflow.keras.applications import DenseNet121\n",
+        "from tensorflow.keras.layers import Dense, Flatten, Dropout, GlobalAveragePooling2D\n",
+        "from tensorflow.keras.models import Model\n",
+        "from tensorflow.keras.preprocessing.image import ImageDataGenerator\n",
+        "from kerastuner.tuners import BayesianOptimization\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def build_densenet(hp):\n",
+        "    base_model = DenseNet121(\n",
+        "        include_top=False,\n",
+        "        weights=\"imagenet\",\n",
+        "        input_shape=(224, 224, 3)\n",
+        "    )\n",
+        "    base_model.trainable = False  # Freeze the base model\n",
+        "\n",
+        "    x = GlobalAveragePooling2D()(base_model.output)\n",
+        "    x = Dense(\n",
+        "        units=hp.Int(\"dense_units\", min_value=64, max_value=512, step=64),\n",
+        "        activation=\"relu\"\n",
+        "    )(x)\n",
+        "    x = Dropout(\n",
+        "        rate=hp.Float(\"dropout\", min_value=0.2, max_value=0.5, step=0.1)\n",
+        "    )(x)\n",
+        "    output = Dense(3, activation=\"softmax\")(x)  # Assuming 3 classes\n",
+        "\n",
+        "    model = Model(inputs=base_model.input, outputs=output)\n",
+        "\n",
+        "    model.compile(\n",
+        "        optimizer=tf.keras.optimizers.Adam(\n",
+        "            learning_rate=hp.Choice(\"learning_rate\", [1e-3, 1e-4, 1e-5])\n",
+        "        ),\n",
+        "        loss=\"categorical_crossentropy\",\n",
+        "        metrics=[\"accuracy\"]\n",
+        "    )\n",
+        "\n",
+        "    return model\n"
+      ],
+      "metadata": {
+        "id": "YdDGTyGvaYN5"
+      },
+      "execution_count": 3,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tuner = BayesianOptimization(\n",
+        "    build_densenet,\n",
+        "    objective=\"val_accuracy\",\n",
+        "    max_trials=10,\n",
+        "    directory=\"densenet_tuning\",\n",
+        "    project_name=\"bayesian_densenet\"\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "QvQ11ZVPdFEh"
+      },
+      "execution_count": 5,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import os\n",
+        "\n",
+        "dataset_path = \"/root/.cache/kagglehub/datasets/borhanitrash/animal-image-classification-dataset/versions/1\"\n",
+        "\n",
+        "# Walk through all subdirectories\n",
+        "for root, dirs, files in os.walk(dataset_path):\n",
+        "    print(f\"📂 {root}\")\n",
+        "    for d in dirs:\n",
+        "        print(f\"  📁 {d}\")\n",
+        "    for f in files:\n",
+        "        print(f\"  📄 {f}\")"
+      ],
+      "metadata": {
+        "id": "wfSchZlGdRrA"
+      },
+      "execution_count": 8,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import kagglehub\n",
+        "\n",
+        "dataset_dir = kagglehub.dataset_download(\"borhanitrash/animal-image-classification-dataset\")\n",
+        "print(\"Downloaded dataset path:\", dataset_dir)\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "lShPovhAdvJa",
+        "outputId": "5c51f631-a3e8-4d69-d76f-8d611ee3e3eb"
+      },
+      "execution_count": 11,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Downloading from https://www.kaggle.com/api/v1/datasets/download/borhanitrash/animal-image-classification-dataset?dataset_version_number=1...\n"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "100%|██████████| 38.4M/38.4M [00:00<00:00, 165MB/s]"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Extracting files...\n"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "\n"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Downloaded dataset path: /root/.cache/kagglehub/datasets/borhanitrash/animal-image-classification-dataset/versions/1\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import os\n",
+        "\n",
+        "print(\"Dataset exists:\", os.path.exists(dataset_dir))\n",
+        "print(\"Contents:\", os.listdir(dataset_dir) if os.path.exists(dataset_dir) else \"Directory not found\")\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "3WDQGLPze9ZY",
+        "outputId": "de6a727c-1aeb-4931-8647-cb82af038cdb"
+      },
+      "execution_count": 13,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Dataset exists: True\n",
+            "Contents: ['Animals', 'README.md']\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import os\n",
+        "print(\"Current working directory:\", os.getcwd())\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "N_gongQgfa6M",
+        "outputId": "e87048d4-78bb-4c6c-cab4-0a89a80579e3"
+      },
+      "execution_count": 15,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Current working directory: /content\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(\"Available directories:\", os.listdir())\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "xvrb8ohPfoVA",
+        "outputId": "9bcf74d2-e206-4136-b826-ba336dc554c6"
+      },
+      "execution_count": 16,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Available directories: ['.config', 'densenet_tuning', 'sample_data']\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import os\n",
+        "print(\"Directories in /content:\", os.listdir(\"/content\"))\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "1h0e2Mj3fxWW",
+        "outputId": "bc0a673e-b78f-45c9-e7f5-5a94b8828498"
+      },
+      "execution_count": 18,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Directories in /content: ['.config', 'densenet_tuning', 'sample_data']\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import os\n",
+        "print(\"Contents inside 'densenet_tuning':\", os.listdir(\"/content/densenet_tuning\"))\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "DI8F-anGgAct",
+        "outputId": "b57a7c94-9a26-4627-9022-c9eab6fb1fbc"
+      },
+      "execution_count": 19,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Contents inside 'densenet_tuning': ['bayesian_densenet']\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!pip install kaggle\n",
+        "!mkdir ~/.kaggle\n",
+        "!cp /path/to/kaggle.json ~/.kaggle/\n",
+        "!kaggle datasets download -d dataset-name -p /content/dataset --unzip\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "gbX5J8jmgJ-q",
+        "outputId": "e908b852-4c60-4275-e8a0-0008df8e7bb0"
+      },
+      "execution_count": 22,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Requirement already satisfied: kaggle in /usr/local/lib/python3.11/dist-packages (1.6.17)\n",
+            "Requirement already satisfied: six>=1.10 in /usr/local/lib/python3.11/dist-packages (from kaggle) (1.17.0)\n",
+            "Requirement already satisfied: certifi>=2023.7.22 in /usr/local/lib/python3.11/dist-packages (from kaggle) (2025.1.31)\n",
+            "Requirement already satisfied: python-dateutil in /usr/local/lib/python3.11/dist-packages (from kaggle) (2.8.2)\n",
+            "Requirement already satisfied: requests in /usr/local/lib/python3.11/dist-packages (from kaggle) (2.32.3)\n",
+            "Requirement already satisfied: tqdm in /usr/local/lib/python3.11/dist-packages (from kaggle) (4.67.1)\n",
+            "Requirement already satisfied: python-slugify in /usr/local/lib/python3.11/dist-packages (from kaggle) (8.0.4)\n",
+            "Requirement already satisfied: urllib3 in /usr/local/lib/python3.11/dist-packages (from kaggle) (2.3.0)\n",
+            "Requirement already satisfied: bleach in /usr/local/lib/python3.11/dist-packages (from kaggle) (6.2.0)\n",
+            "Requirement already satisfied: webencodings in /usr/local/lib/python3.11/dist-packages (from bleach->kaggle) (0.5.1)\n",
+            "Requirement already satisfied: text-unidecode>=1.3 in /usr/local/lib/python3.11/dist-packages (from python-slugify->kaggle) (1.3)\n",
+            "Requirement already satisfied: charset-normalizer<4,>=2 in /usr/local/lib/python3.11/dist-packages (from requests->kaggle) (3.4.1)\n",
+            "Requirement already satisfied: idna<4,>=2.5 in /usr/local/lib/python3.11/dist-packages (from requests->kaggle) (3.10)\n",
+            "cp: cannot stat '/path/to/kaggle.json': No such file or directory\n",
+            "Missing the required parameter `owner_slug` when calling `metadata_get`\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import kagglehub\n",
+        "\n",
+        "dataset_dir = kagglehub.dataset_download(\"borhanitrash/animal-image-classification-dataset\")\n",
+        "print(\"Downloaded dataset path:\", dataset_dir)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "aBRL-S6hgiVj",
+        "outputId": "b5f0a1bf-7042-4d9c-b65e-12fa0e9985db"
+      },
+      "execution_count": 29,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Downloaded dataset path: /root/.cache/kagglehub/datasets/borhanitrash/animal-image-classification-dataset/versions/1\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import os\n",
+        "\n",
+        "dataset_path = \"/root/.cache/kagglehub/datasets/borhanitrash/animal-image-classification-dataset/versions/1\"\n",
+        "print(\"✅ Exists:\", os.path.exists(dataset_path))\n",
+        "if os.path.exists(dataset_path):\n",
+        "    print(\"📂 Contents:\", os.listdir(dataset_path))\n",
+        "else:\n",
+        "    print(\"❌ Dataset not found! Check if it was downloaded correctly.\")\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "j9-3sKdWi9gw",
+        "outputId": "a89fed15-35a4-440b-fd99-4e7cc30c1a00"
+      },
+      "execution_count": 30,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "✅ Exists: True\n",
+            "📂 Contents: ['Animals', 'README.md']\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "train_datagen = ImageDataGenerator(rescale=1./255, validation_split=0.2)\n",
+        "train_data = train_datagen.flow_from_directory(\n",
+        "    \"/root/.cache/kagglehub/datasets/borhanitrash/animal-image-classification-dataset/versions/1\",  # Make sure this path exists!\n",
+        "    target_size=(224, 224),\n",
+        "    batch_size=32,\n",
+        "    class_mode='categorical',\n",
+        "    subset='training'\n",
+        ")\n",
+        "\n",
+        "val_data = train_datagen.flow_from_directory(\n",
+        "    \"/root/.cache/kagglehub/datasets/borhanitrash/animal-image-classification-dataset/versions/1\",  # Using the same directory but with validation split\n",
+        "    target_size=(224, 224),\n",
+        "    batch_size=32,\n",
+        "    class_mode='categorical',\n",
+        "    subset='validation'\n",
+        ")\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "Z4WY1wk_kgRa",
+        "outputId": "c83ab26f-2e75-4bc4-b247-00ad782ff46a"
+      },
+      "execution_count": 31,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Found 2400 images belonging to 1 classes.\n",
+            "Found 600 images belonging to 1 classes.\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "!pip install keras-tuner tensorflow-addons\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "kl2KkliJk6W2",
+        "outputId": "ec4f8843-86f7-43e3-a6d4-1f315acfe005"
+      },
+      "execution_count": 32,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Requirement already satisfied: keras-tuner in /usr/local/lib/python3.11/dist-packages (1.4.7)\n",
+            "Collecting tensorflow-addons\n",
+            "  Downloading tensorflow_addons-0.23.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (1.8 kB)\n",
+            "Requirement already satisfied: keras in /usr/local/lib/python3.11/dist-packages (from keras-tuner) (3.8.0)\n",
+            "Requirement already satisfied: packaging in /usr/local/lib/python3.11/dist-packages (from keras-tuner) (24.2)\n",
+            "Requirement already satisfied: requests in /usr/local/lib/python3.11/dist-packages (from keras-tuner) (2.32.3)\n",
+            "Requirement already satisfied: kt-legacy in /usr/local/lib/python3.11/dist-packages (from keras-tuner) (1.0.5)\n",
+            "Collecting typeguard<3.0.0,>=2.7 (from tensorflow-addons)\n",
+            "  Downloading typeguard-2.13.3-py3-none-any.whl.metadata (3.6 kB)\n",
+            "Requirement already satisfied: absl-py in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (1.4.0)\n",
+            "Requirement already satisfied: numpy in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (1.26.4)\n",
+            "Requirement already satisfied: rich in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (13.9.4)\n",
+            "Requirement already satisfied: namex in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (0.0.8)\n",
+            "Requirement already satisfied: h5py in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (3.12.1)\n",
+            "Requirement already satisfied: optree in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (0.14.0)\n",
+            "Requirement already satisfied: ml-dtypes in /usr/local/lib/python3.11/dist-packages (from keras->keras-tuner) (0.4.1)\n",
+            "Requirement already satisfied: charset-normalizer<4,>=2 in /usr/local/lib/python3.11/dist-packages (from requests->keras-tuner) (3.4.1)\n",
+            "Requirement already satisfied: idna<4,>=2.5 in /usr/local/lib/python3.11/dist-packages (from requests->keras-tuner) (3.10)\n",
+            "Requirement already satisfied: urllib3<3,>=1.21.1 in /usr/local/lib/python3.11/dist-packages (from requests->keras-tuner) (2.3.0)\n",
+            "Requirement already satisfied: certifi>=2017.4.17 in /usr/local/lib/python3.11/dist-packages (from requests->keras-tuner) (2025.1.31)\n",
+            "Requirement already satisfied: typing-extensions>=4.5.0 in /usr/local/lib/python3.11/dist-packages (from optree->keras->keras-tuner) (4.12.2)\n",
+            "Requirement already satisfied: markdown-it-py>=2.2.0 in /usr/local/lib/python3.11/dist-packages (from rich->keras->keras-tuner) (3.0.0)\n",
+            "Requirement already satisfied: pygments<3.0.0,>=2.13.0 in /usr/local/lib/python3.11/dist-packages (from rich->keras->keras-tuner) (2.18.0)\n",
+            "Requirement already satisfied: mdurl~=0.1 in /usr/local/lib/python3.11/dist-packages (from markdown-it-py>=2.2.0->rich->keras->keras-tuner) (0.1.2)\n",
+            "Downloading tensorflow_addons-0.23.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (611 kB)\n",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m611.8/611.8 kB\u001b[0m \u001b[31m26.2 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\n",
+            "\u001b[?25hDownloading typeguard-2.13.3-py3-none-any.whl (17 kB)\n",
+            "Installing collected packages: typeguard, tensorflow-addons\n",
+            "  Attempting uninstall: typeguard\n",
+            "    Found existing installation: typeguard 4.4.2\n",
+            "    Uninstalling typeguard-4.4.2:\n",
+            "      Successfully uninstalled typeguard-4.4.2\n",
+            "\u001b[31mERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.\n",
+            "inflect 7.5.0 requires typeguard>=4.0.1, but you have typeguard 2.13.3 which is incompatible.\u001b[0m\u001b[31m\n",
+            "\u001b[0mSuccessfully installed tensorflow-addons-0.23.0 typeguard-2.13.3\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import tensorflow as tf\n",
+        "from tensorflow import keras\n",
+        "from tensorflow.keras.applications import DenseNet121\n",
+        "from tensorflow.keras.layers import Dense, Flatten, Dropout, GlobalAveragePooling2D\n",
+        "from tensorflow.keras.models import Model\n",
+        "from tensorflow.keras.preprocessing.image import ImageDataGenerator\n",
+        "from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint\n",
+        "from kerastuner.tuners import BayesianOptimization\n"
+      ],
+      "metadata": {
+        "id": "3TqOvZ1ZlA-L"
+      },
+      "execution_count": 33,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def build_densenet_model(hp):\n",
+        "    base_model = DenseNet121(weights='imagenet', include_top=False, input_shape=(224, 224, 3))\n",
+        "    base_model.trainable = False  # Transfer learning (freeze base model)\n",
+        "\n",
+        "    x = base_model.output\n",
+        "    x = GlobalAveragePooling2D()(x)  # Pooling to reduce parameters\n",
+        "    x = Dense(hp.Int('units', min_value=64, max_value=512, step=64), activation='relu')(x)\n",
+        "    x = Dropout(hp.Float('dropout', min_value=0.2, max_value=0.5, step=0.1))(x)\n",
+        "\n",
+        "    outputs = Dense(train_data.num_classes, activation='softmax')(x)\n",
+        "\n",
+        "    model = Model(inputs=base_model.input, outputs=outputs)\n",
+        "\n",
+        "    model.compile(\n",
+        "        optimizer=keras.optimizers.Adam(hp.Choice('learning_rate', [1e-4, 1e-3])),\n",
+        "        loss='categorical_crossentropy',\n",
+        "        metrics=['accuracy']\n",
+        "    )\n",
+        "\n",
+        "    return model\n"
+      ],
+      "metadata": {
+        "id": "5oia36bjlC-3"
+      },
+      "execution_count": 34,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tuner = BayesianOptimization(\n",
+        "    build_densenet_model,\n",
+        "    objective='val_accuracy',\n",
+        "    max_trials=1,  # Number of different models to test\n",
+        "    directory='densenet_tuning',\n",
+        "    project_name='bayesian_densenet'\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "AnEFWWZblGvm"
+      },
+      "execution_count": 35,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tuner.search(\n",
+        "    train_data,\n",
+        "    validation_data=val_data,\n",
+        "    epochs=1,  # Tune for limited epochs to find best params\n",
+        "    callbacks=[EarlyStopping(monitor='val_loss', patience=3)]\n",
+        ")\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "pwJM5f8NlLTA",
+        "outputId": "b19eb05d-e393-474f-af01-19acc53f2811"
+      },
+      "execution_count": 36,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Trial 1 Complete [00h 09m 45s]\n",
+            "val_accuracy: 1.0\n",
+            "\n",
+            "Best val_accuracy So Far: 1.0\n",
+            "Total elapsed time: 00h 09m 45s\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Get the best hyperparameters\n",
+        "best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]\n",
+        "\n",
+        "# Build the best model\n",
+        "best_model = tuner.hypermodel.build(best_hps)\n",
+        "\n",
+        "# Train best model with more epochs\n",
+        "history = best_model.fit(\n",
+        "    train_data,\n",
+        "    validation_data=val_data,\n",
+        "    epochs=1,  # Train longer with best parameters\n",
+        "    callbacks=[\n",
+        "        EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True),\n",
+        "        ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=1e-7),\n",
+        "        ModelCheckpoint('best_bayesian_densenet.keras', save_best_only=True, monitor='val_accuracy')\n",
+        "    ]\n",
+        ")\n",
+        "\n",
+        "# Save the trained model\n",
+        "best_model.save('best_bayesian_densenet.keras')\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "Gw_cPXFUnIE2",
+        "outputId": "a0e69e75-aaef-4a02-8943-5b486803ea63"
+      },
+      "execution_count": 38,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\u001b[1m75/75\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m540s\u001b[0m 7s/step - accuracy: 1.0000 - loss: 0.0000e+00 - val_accuracy: 1.0000 - val_loss: 0.0000e+00 - learning_rate: 1.0000e-04\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "val_loss, val_accuracy = best_model.evaluate(val_data)\n",
+        "print(f\"Validation Accuracy: {val_accuracy * 100:.2f}%\")\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "4XhHdzNZrKed",
+        "outputId": "fe9ba281-93b0-4d72-cb93-96b161c278b8"
+      },
+      "execution_count": 39,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "\u001b[1m19/19\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m95s\u001b[0m 5s/step - accuracy: 1.0000 - loss: 0.0000e+00\n",
+            "Validation Accuracy: 100.00%\n"
+          ]
+        }
+      ]
+    }
+  ]
+}
