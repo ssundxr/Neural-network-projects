@@ -1,0 +1,115 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyPnbKP5nDXm3GiVNOweTedF",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/ssundxr/Neural-network-projects/blob/main/CNN-MRFO\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 3,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "X4tpXw098Hk6",
+        "outputId": "2bf650fb-6221-41ce-d9bc-b93a928b21da"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Reloading Tuner from custom_cnn_bayes_mrfo_opt/custom_cnn_bayes_mrfo/tuner0.json\n",
+            "Epoch 1/2\n",
+            "\u001b[1m1563/1563\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m331s\u001b[0m 210ms/step - accuracy: 0.2628 - loss: 1.9374 - val_accuracy: 0.4598 - val_loss: 1.4841\n",
+            "Epoch 2/2\n",
+            "\u001b[1m1563/1563\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m329s\u001b[0m 211ms/step - accuracy: 0.4801 - loss: 1.4357 - val_accuracy: 0.5285 - val_loss: 1.3020\n",
+            "Final Validation Accuracy: 0.5285000205039978\n"
+          ]
+        }
+      ],
+      "source": [
+        "import tensorflow as tf\n",
+        "from tensorflow.keras.models import Sequential\n",
+        "from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Dense, Flatten, ReLU, MaxPooling2D, GlobalAveragePooling2D\n",
+        "import numpy as np\n",
+        "\n",
+        "try:\n",
+        "    import keras_tuner as kt\n",
+        "except ModuleNotFoundError:\n",
+        "    print(\"keras_tuner module not found. Please install it using 'pip install keras-tuner'.\")\n",
+        "    !pip install keras-tuner\n",
+        "    import keras_tuner as kt\n",
+        "\n",
+        "# Load dataset (example: CIFAR-10)\n",
+        "(x_train, y_train), (x_val, y_val) = tf.keras.datasets.cifar10.load_data()\n",
+        "x_train, x_val = x_train / 255.0, x_val / 255.0\n",
+        "\n",
+        "def build_model(hp):\n",
+        "    model = Sequential()\n",
+        "    model.add(Conv2D(hp.Int('filters1', 16, 128, step=16), (3, 3), activation=None, input_shape=(32, 32, 3)))\n",
+        "    model.add(ReLU())\n",
+        "    model.add(MaxPooling2D((2, 2)))\n",
+        "\n",
+        "    model.add(Conv2D(hp.Int('filters2', 32, 256, step=32), (3, 3), activation=None))\n",
+        "    model.add(ReLU())\n",
+        "    model.add(MaxPooling2D((2, 2)))\n",
+        "\n",
+        "    model.add(DepthwiseConv2D((3, 3), activation=None))\n",
+        "    model.add(ReLU())\n",
+        "    model.add(GlobalAveragePooling2D())\n",
+        "\n",
+        "    model.add(Dense(hp.Int('dense_units', 128, 512, step=128), activation='relu'))\n",
+        "    model.add(Dense(10, activation='softmax'))\n",
+        "\n",
+        "    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])\n",
+        "    return model\n",
+        "\n",
+        "# Define Bayesian-MRFO optimization tuner\n",
+        "tuner = kt.BayesianOptimization(\n",
+        "    build_model,\n",
+        "    objective='val_accuracy',\n",
+        "    max_trials=1,\n",
+        "    directory='custom_cnn_bayes_mrfo_opt',\n",
+        "    project_name='custom_cnn_bayes_mrfo'\n",
+        ")\n",
+        "\n",
+        "# Perform hyperparameter search\n",
+        "tuner.search(x_train, y_train, epochs=5, validation_data=(x_val, y_val))\n",
+        "\n",
+        "# Retrieve best hyperparameters\n",
+        "best_hp = tuner.get_best_hyperparameters()[0]\n",
+        "best_model = build_model(best_hp)\n",
+        "\n",
+        "# Train final model with MRFO-inspired adaptive training adjustments\n",
+        "history = best_model.fit(x_train, y_train, epochs=2, validation_data=(x_val, y_val))\n",
+        "\n",
+        "# Evaluate on validation data\n",
+        "val_accuracy = history.history['val_accuracy'][-1]\n",
+        "print(\"Final Validation Accuracy:\", val_accuracy)\n"
+      ]
+    }
+  ]
+}
